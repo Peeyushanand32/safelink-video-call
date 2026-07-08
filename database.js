@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+mongoose.set('bufferCommands', false);
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
@@ -75,11 +76,11 @@ const User = mongoose.model('User', userSchema);
 // Get user by email
 async function getUserByEmail(email) {
   if (!email) return null;
-  if (useMongo) {
+  if (useMongo && mongoose.connection.readyState === 1) {
     try {
       return await User.findOne({ email: email.toLowerCase().trim() }).lean();
     } catch (err) {
-      console.warn('[Database] MongoDB query failed, falling back to local search.');
+      console.warn('[Database] MongoDB query failed, falling back to local search.', err.message);
     }
   }
   const users = readUsersLocal();
@@ -89,11 +90,11 @@ async function getUserByEmail(email) {
 // Get user by ID
 async function getUserById(id) {
   if (!id) return null;
-  if (useMongo) {
+  if (useMongo && mongoose.connection.readyState === 1) {
     try {
       return await User.findOne({ id }).lean();
     } catch (err) {
-      console.warn('[Database] MongoDB query failed, falling back to local search.');
+      console.warn('[Database] MongoDB query failed, falling back to local search.', err.message);
     }
   }
   const users = readUsersLocal();
@@ -132,7 +133,7 @@ async function createUser({ name, email, password = null, provider = 'email', av
     createdAt: new Date().toISOString()
   };
 
-  if (useMongo) {
+  if (useMongo && mongoose.connection.readyState === 1) {
     try {
       const newUser = new User(userData);
       await newUser.save();
@@ -175,7 +176,7 @@ async function verifyPassword(plainPassword, passwordHash) {
 
 // Update user interests
 async function updateUserInterests(userId, interests) {
-  if (useMongo) {
+  if (useMongo && mongoose.connection.readyState === 1) {
     try {
       const result = await User.updateOne({ id: userId }, { $set: { interests } });
       return result.modifiedCount > 0 || result.matchedCount > 0;
@@ -196,7 +197,7 @@ async function updateUserInterests(userId, interests) {
 
 // Add call connection history record
 async function addUserHistoryRecord(userId, record) {
-  if (useMongo) {
+  if (useMongo && mongoose.connection.readyState === 1) {
     try {
       const user = await User.findOne({ id: userId });
       if (user) {
@@ -282,7 +283,7 @@ async function renewSubscription(userId) {
 
   const newExpiryIso = newExpiry.toISOString();
 
-  if (useMongo) {
+  if (useMongo && mongoose.connection.readyState === 1) {
     try {
       await User.updateOne({ id: userId }, { $set: { subscriptionExpiresAt: newExpiryIso } });
       return newExpiryIso;
