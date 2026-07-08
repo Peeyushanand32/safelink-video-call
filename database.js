@@ -1,53 +1,55 @@
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
-const bcrypt = require('bcryptjs');
 
-const DB_PATH = path.join(__dirname, 'users.json');
-
-// Initialize local JSON database if not exists
-if (!fs.existsSync(DB_PATH)) {
-  fs.writeFileSync(DB_PATH, JSON.stringify([], null, 2), 'utf8');
-}
-
-// Read users list from file
-function readUsers() {
+// Load configurations to get MONGODB_URI
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+let config = {};
+if (fs.existsSync(CONFIG_PATH)) {
   try {
-    const data = fs.readFileSync(DB_PATH, 'utf8');
-    return JSON.parse(data);
+    config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
   } catch (err) {
-    console.error('[Database] Error reading users file:', err);
-    return [];
+    console.error('[Database Config] Failed to parse config.json');
   }
 }
 
-// Write users list to file
-function writeUsers(users) {
-  try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(users, null, 2), 'utf8');
-  } catch (err) {
-    console.error('[Database] Error writing users file:', err);
-  }
-}
+const MONGODB_URI = process.env.MONGODB_URI || config.MONGODB_URI || 'mongodb://127.0.0.1:27017/safelink';
+
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('[Database] Connected to MongoDB successfully.'))
+  .catch(err => console.error('[Database] MongoDB connection error:', err));
+
+const userSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true, index: true },
+  passwordHash: { type: String, default: null },
+  provider: { type: String, default: 'email' },
+  avatar: { type: String },
+  interests: { type: [String], default: ['Product Design', 'Cybersecurity', 'AI Ethics'] },
+  history: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', userSchema);
 
 // Get user by email
-function getUserByEmail(email) {
+async function getUserByEmail(email) {
   if (!email) return null;
-  const users = readUsers();
-  return users.find(user => user.email.toLowerCase() === email.toLowerCase().trim());
+  return await User.findOne({ email: email.toLowerCase().trim() }).lean();
 }
 
 // Get user by ID
-function getUserById(id) {
-  const users = readUsers();
-  return users.find(user => user.id === id);
+async function getUserById(id) {
+  if (!id) return null;
+  return await User.findOne({ id }).lean();
 }
 
 // Create a new user
 async function createUser({ name, email, password = null, provider = 'email', avatar = null }) {
-  const users = readUsers();
-  
   // Check duplicate
-  const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+  const existing = await User.findOne({ email: email.toLowerCase().trim() });
   if (existing) {
     throw new Error('Email is already registered.');
   }
@@ -62,7 +64,7 @@ async function createUser({ name, email, password = null, provider = 'email', av
   // Create unique ID
   const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
-  const newUser = {
+  const newUser = new User({
     id: newUserId,
     name: name.trim(),
     email: email.toLowerCase().trim(),
@@ -70,12 +72,10 @@ async function createUser({ name, email, password = null, provider = 'email', av
     provider: provider,
     avatar: avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
     interests: ['Product Design', 'Cybersecurity', 'AI Ethics'], // Default interests
-    history: [], // Default history log
-    createdAt: new Date().toISOString()
-  };
+    history: []
+  });
 
-  users.push(newUser);
-  writeUsers(users);
+  await newUser.save();
 
   return {
     id: newUser.id,
@@ -94,28 +94,21 @@ async function verifyPassword(plainPassword, passwordHash) {
 }
 
 // Update user interests
-function updateUserInterests(userId, interests) {
-  const users = readUsers();
-  const index = users.findIndex(u => u.id === userId);
-  if (index !== -1) {
-    users[index].interests = interests;
-    writeUsers(users);
-    return true;
-  }
-  return false;
+async function updateUserInterests(userId, interests) {
+  const result = await User.updateOne({ id: userId }, { $set: { interests } });
+  return result.modifiedCount > 0 || result.matchedCount > 0;
 }
 
 // Add call connection history record
-function addUserHistoryRecord(userId, record) {
-  const users = readUsers();
-  const index = users.findIndex(u => u.id === userId);
-  if (index !== -1) {
-    if (!users[index].history) users[index].history = [];
-    users[index].history.unshift(record);
+async function addUserHistoryRecord(userId, record) {
+  const user = await User.findOne({ id: userId });
+  if (user) {
+    if (!user.history) user.history = [];
+    user.history.unshift(record);
     // Cap at 10 items
-    if (users[index].history.length > 10) users[index].history.pop();
-    writeUsers(users);
-    return users[index].history;
+    if (user.history.length > 10) user.history.pop();
+    await user.save();
+    return user.history;
   }
   return [];
 }

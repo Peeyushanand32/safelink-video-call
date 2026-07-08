@@ -45,18 +45,23 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Access token missing.' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired session token.' });
     }
     
-    const user = db.getUserById(decoded.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User account not found.' });
+    try {
+      const user = await db.getUserById(decoded.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User account not found.' });
+      }
+      
+      req.user = user;
+      next();
+    } catch (dbErr) {
+      console.error('[Auth Middleware] Database error:', dbErr);
+      return res.status(500).json({ error: 'Internal server error.' });
     }
-    
-    req.user = user;
-    next();
   });
 }
 
@@ -71,7 +76,7 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 
   try {
-    const existing = db.getUserByEmail(email);
+    const existing = await db.getUserByEmail(email);
     if (existing) {
       return res.status(409).json({ error: 'Email is already registered.' });
     }
@@ -106,7 +111,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   try {
-    const user = db.getUserByEmail(email);
+    const user = await db.getUserByEmail(email);
     if (!user || user.provider !== 'email') {
       return res.status(401).json({ error: 'Invalid email or password credentials.' });
     }
@@ -174,7 +179,7 @@ app.post('/api/auth/google', async (req, res) => {
     }
 
     // Retrieve or create Google user
-    let user = db.getUserByEmail(payload.email);
+    let user = await db.getUserByEmail(payload.email);
     if (!user) {
       console.log(`[Google Auth] Creating new Google SSO user for: ${payload.email}`);
       user = await db.createUser({
@@ -227,13 +232,13 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 });
 
 // 5. Update user interests in database
-app.post('/api/auth/interests', authenticateToken, (req, res) => {
+app.post('/api/auth/interests', authenticateToken, async (req, res) => {
   const { interests } = req.body;
   if (!Array.isArray(interests)) {
     return res.status(400).json({ error: 'Interests must be a valid array of strings.' });
   }
 
-  const success = db.updateUserInterests(req.user.id, interests);
+  const success = await db.updateUserInterests(req.user.id, interests);
   if (success) {
     res.json({ message: 'Interests updated successfully.', interests });
   } else {
@@ -260,7 +265,7 @@ io.on('connection', (socket) => {
   console.log(`[Socket Server] Connection opened: ${socket.id}`);
 
   // When a user requests matchmaking
-  socket.on('join-matchmaking', (data) => {
+  socket.on('join-matchmaking', async (data) => {
     const { token } = data;
     let userId = null;
     let userName = 'Anonymous';
@@ -271,7 +276,7 @@ io.on('connection', (socket) => {
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = db.getUserById(decoded.id);
+        const user = await db.getUserById(decoded.id);
         if (user) {
           userId = user.id;
           userName = user.name;
@@ -379,12 +384,12 @@ io.on('connection', (socket) => {
   });
 
   // Log active call record directly to database when finished
-  socket.on('log-call-history', (data) => {
+  socket.on('log-call-history', async (data) => {
     const { token, record } = data;
     if (token && record) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const historyLogs = db.addUserHistoryRecord(decoded.id, record);
+        const historyLogs = await db.addUserHistoryRecord(decoded.id, record);
         socket.emit('history-logged', { history: historyLogs });
       } catch (err) {
         console.warn('[Socket Server] Failed to log call history:', err.message);
