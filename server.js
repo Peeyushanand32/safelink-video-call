@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const db = require('./database');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 // Load configurations
 const CONFIG_PATH = path.join(__dirname, 'config.json');
@@ -20,6 +21,15 @@ if (fs.existsSync(CONFIG_PATH)) {
 
 const JWT_SECRET = process.env.JWT_SECRET || config.JWT_SECRET || 'safelink_jwt_super_secret_session_token_key_change_me';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || config.GOOGLE_CLIENT_ID || '';
+
+// SMTP Configuration
+const SMTP_HOST = process.env.SMTP_HOST || config.SMTP_HOST || '';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || config.SMTP_PORT || '587');
+const SMTP_USER = process.env.SMTP_USER || config.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || config.SMTP_PASS || '';
+
+// Temporary OTP Memory Storage
+let otpStore = {}; // { email: { otp: string, expiresAt: number } }
 
 const app = express();
 const server = http.createServer(app);
@@ -67,13 +77,106 @@ function authenticateToken(req, res, next) {
 
 // ==================== AUTHENTICATION API ROUTES ====================
 
+// 0. Send Email OTP
+app.post('/api/auth/send-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email address is required.' });
+  }
+
+  try {
+    // Check if user already exists
+    const existing = await db.getUserByEmail(email);
+    if (existing) {
+      return res.status(409).json({ error: 'Email is already registered.' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore[email.toLowerCase().trim()] = {
+      otp,
+      expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
+    };
+
+    console.log(`[OTP] Generated OTP for ${email}: ${otp}`);
+
+    if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
+      // Send real email via SMTP
+      const transporter = nodemailer.createTransport({
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_PORT === 465,
+        auth: {
+          user: SMTP_USER,
+          pass: SMTP_PASS
+        }
+      });
+
+      const mailOptions = {
+        from: `"SafeLink Security" <${SMTP_USER}>`,
+        to: email,
+        subject: 'SafeLink Verification Code (OTP)',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+            <h2 style="color: #14b8a6; text-align: center;">SafeLink Verification</h2>
+            <p>Hello,</p>
+            <p>Thank you for choosing SafeLink! To complete your registration, please verify your email address using this verification code:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0b1326; background: #f0fdfa; padding: 15px 30px; border-radius: 8px; border: 1px dashed #14b8a6; display: inline-block;">
+                ${otp}
+              </span>
+            </div>
+            <p style="color: #666; font-size: 14px;">This OTP is valid for 5 minutes. If you did not request this code, please ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #eee;" />
+            <p style="color: #999; font-size: 12px; text-align: center;">SafeLink Secure Peer-to-Peer Video Call</p>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`[OTP] Verification email sent to: ${email}`);
+      res.json({ message: 'Verification OTP sent to your email.' });
+    } else {
+      // Simulator Fallback Mode
+      console.log(`[OTP Simulator] Real SMTP host not configured. Simulated OTP for ${email} is: ${otp}`);
+      res.json({
+        message: 'Verification OTP generated (Simulator Mode).',
+        isSimulated: true,
+        simulatedOtp: otp
+      });
+    }
+  } catch (err) {
+    console.error('[OTP Send Error]:', err);
+    res.status(500).json({ error: 'Failed to send verification code. Please try again.' });
+  }
+});
+
 // 1. Email/Password Signup
 app.post('/api/auth/signup', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, otp } = req.body;
   
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'All fields (name, email, password) are required.' });
+  if (!name || !email || !password || !otp) {
+    return res.status(400).json({ error: 'All fields (name, email, password, otp) are required.' });
   }
+
+  const emailKey = email.toLowerCase().trim();
+  const record = otpStore[emailKey];
+
+  if (!record) {
+    return res.status(400).json({ error: 'No verification request found for this email. Please send OTP first.' });
+  }
+
+  if (Date.now() > record.expiresAt) {
+    delete otpStore[emailKey];
+    return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+  }
+
+  if (record.otp !== otp.trim()) {
+    return res.status(400).json({ error: 'Invalid verification OTP. Please check and try again.' });
+  }
+
+  // Clear OTP on successful match
+  delete otpStore[emailKey];
 
   try {
     const existing = await db.getUserByEmail(email);

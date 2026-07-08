@@ -89,6 +89,18 @@ function toggleAuthTab(tab) {
 
   errAlert.classList.add('hidden');
 
+  // Reset signup verification fields when switching tabs
+  const otpContainer = document.getElementById('signup-otp-container');
+  if (otpContainer) {
+    otpContainer.classList.add('hidden');
+    document.getElementById('signup-otp').value = '';
+    document.getElementById('signup-otp').removeAttribute('required');
+    document.getElementById('signup-name').disabled = false;
+    document.getElementById('signup-email').disabled = false;
+    document.getElementById('signup-password').disabled = false;
+    document.getElementById('signup-submit-btn').textContent = 'Create Account';
+  }
+
   if (tab === 'login') {
     loginBtn.className = 'py-md font-label-md text-label-md rounded-lg bg-primary text-on-primary font-semibold transition-all';
     signupBtn.className = 'py-md font-label-md text-label-md rounded-lg text-on-surface-variant hover:text-on-surface transition-all';
@@ -279,12 +291,67 @@ async function handleSignupSubmit(e) {
   const email = document.getElementById('signup-email').value;
   const password = document.getElementById('signup-password').value;
 
+  const otpContainer = document.getElementById('signup-otp-container');
+  const otpInput = document.getElementById('signup-otp');
+  const submitBtn = document.getElementById('signup-submit-btn');
+
+  // Step 1: Send OTP if OTP container is hidden
+  if (otpContainer.classList.contains('hidden')) {
+    try {
+      showAuthError(null);
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending Verification Code...';
+
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send verification code.');
+
+      // Show OTP input and update UI
+      otpContainer.classList.remove('hidden');
+      otpInput.setAttribute('required', 'true');
+      submitBtn.textContent = 'Verify & Create Account';
+
+      // Lock input fields while verifying
+      document.getElementById('signup-name').disabled = true;
+      document.getElementById('signup-email').disabled = true;
+      document.getElementById('signup-password').disabled = true;
+
+      if (data.isSimulated && data.simulatedOtp) {
+        alert(`[OTP Simulator] Verification code generated!\nSimulated OTP is: ${data.simulatedOtp}\n(It is pre-filled for easy local testing)`);
+        otpInput.value = data.simulatedOtp;
+      } else {
+        alert('Verification OTP sent successfully! Please check your email inbox.');
+      }
+    } catch (err) {
+      showAuthError(err.message);
+      submitBtn.textContent = 'Create Account';
+    } finally {
+      submitBtn.disabled = false;
+    }
+    return;
+  }
+
+  // Step 2: Submit OTP and register user
+  const otp = otpInput.value.trim();
+  if (!otp) {
+    showAuthError('Please enter the 6-digit OTP code sent to your email.');
+    return;
+  }
+
   try {
     showAuthError(null);
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Verifying Account...';
+
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
+      body: JSON.stringify({ name, email, password, otp })
     });
     
     const data = await res.json();
@@ -294,9 +361,21 @@ async function handleSignupSubmit(e) {
     jwtToken = data.token;
     currentUser = data.user;
 
+    // Reset UI state
+    document.getElementById('signup-name').disabled = false;
+    document.getElementById('signup-email').disabled = false;
+    document.getElementById('signup-password').disabled = false;
+    otpContainer.classList.add('hidden');
+    otpInput.removeAttribute('required');
+    otpInput.value = '';
+    submitBtn.textContent = 'Create Account';
+
     await loadUserSession();
   } catch (err) {
     showAuthError(err.message);
+    submitBtn.textContent = 'Verify & Create Account';
+  } finally {
+    submitBtn.disabled = false;
   }
 }
 

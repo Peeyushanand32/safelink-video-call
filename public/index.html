@@ -178,7 +178,17 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full py-md px-xl bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(79,219,200,0.3)] transition-all active:scale-95 shadow-md">
+        <!-- OTP Field (Hidden by default, shown after clicking Send OTP) -->
+        <div id="signup-otp-container" class="space-y-sm hidden">
+          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Verification OTP</label>
+          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-primary/50 focus-within:border-primary transition-colors">
+            <span class="material-symbols-outlined text-primary">verified_user</span>
+            <input type="text" id="signup-otp" placeholder="••••••" maxlength="6" class="bg-transparent border-none text-on-surface font-bold text-center w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40 tracking-widest text-lg" />
+          </div>
+          <p class="text-[11px] text-on-surface-variant/70 text-center">We've sent a 6-digit verification code to your email.</p>
+        </div>
+
+        <button type="submit" id="signup-submit-btn" class="w-full py-md px-xl bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(79,219,200,0.3)] transition-all active:scale-95 shadow-md">
           Create Account
         </button>
       </form>
