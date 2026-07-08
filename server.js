@@ -130,7 +130,9 @@ app.post('/api/auth/send-otp', async (req, res) => {
         auth: {
           user: SMTP_USER,
           pass: SMTP_PASS
-        }
+        },
+        debug: true,
+        logger: true
       });
 
       const mailOptions = {
