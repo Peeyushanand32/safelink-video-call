@@ -152,7 +152,7 @@ function initializeGoogleSSO() {
 
   google.accounts.id.renderButton(
     nativeBtn,
-    { theme: "outline", size: "large", width: "100%", text: "continue_with" }
+    { theme: "outline", size: "large", width: 350, text: "continue_with" }
   );
 }
 
