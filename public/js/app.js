@@ -506,13 +506,7 @@ function handleUserSignOut() {
   userInterests = [];
   connectionHistory = [];
 
-  // Reset forms
-  document.getElementById('login-form').reset();
-  document.getElementById('signup-form').reset();
   showAuthError(null);
-
-  // Switch to login tab
-  toggleAuthTab('login');
 
   // Toggle screens
   showAuthView(true);
@@ -1479,6 +1473,9 @@ async function startRazorpayPayment() {
   } catch (err) {
     console.error('[Payment Flow]:', err);
     alert(err.message);
+    if (err.message.toLowerCase().includes('not found') || err.message.toLowerCase().includes('expired') || err.message.toLowerCase().includes('invalid') || err.message.toLowerCase().includes('access denied')) {
+      handleUserSignOut();
+    }
   }
 }
 
