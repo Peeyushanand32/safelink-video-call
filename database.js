@@ -65,6 +65,8 @@ const userSchema = new mongoose.Schema({
   avatar: { type: String },
   interests: { type: [String], default: ['Product Design', 'Cybersecurity', 'AI Ethics'] },
   history: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  trialExpiresAt: { type: Date },
+  subscriptionExpiresAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -113,6 +115,9 @@ async function createUser({ name, email, password = null, provider = 'email', av
   }
 
   const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const trialDurationMs = 24 * 60 * 60 * 1000; // 1 day
+  const trialExpiresAt = new Date(Date.now() + trialDurationMs).toISOString();
+
   const userData = {
     id: newUserId,
     name: name.trim(),
@@ -122,6 +127,8 @@ async function createUser({ name, email, password = null, provider = 'email', av
     avatar: avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
     interests: ['Product Design', 'Cybersecurity', 'AI Ethics'],
     history: [],
+    trialExpiresAt: trialExpiresAt,
+    subscriptionExpiresAt: null,
     createdAt: new Date().toISOString()
   };
 
@@ -135,7 +142,9 @@ async function createUser({ name, email, password = null, provider = 'email', av
         email: newUser.email,
         avatar: newUser.avatar,
         provider: newUser.provider,
-        interests: newUser.interests
+        interests: newUser.interests,
+        trialExpiresAt: newUser.trialExpiresAt,
+        subscriptionExpiresAt: newUser.subscriptionExpiresAt
       };
     } catch (err) {
       console.warn('[Database] MongoDB save failed, falling back to saving locally.', err.message);
@@ -152,7 +161,9 @@ async function createUser({ name, email, password = null, provider = 'email', av
     email: userData.email,
     avatar: userData.avatar,
     provider: userData.provider,
-    interests: userData.interests
+    interests: userData.interests,
+    trialExpiresAt: userData.trialExpiresAt,
+    subscriptionExpiresAt: userData.subscriptionExpiresAt
   };
 }
 
@@ -212,11 +223,91 @@ async function addUserHistoryRecord(userId, record) {
   return [];
 }
 
+// Check subscription and trial status dynamically
+function checkSubscriptionStatus(user) {
+  const now = new Date();
+  const createdAtDate = user.createdAt ? new Date(user.createdAt) : now;
+  const trialExpiresAt = user.trialExpiresAt ? new Date(user.trialExpiresAt) : new Date(createdAtDate.getTime() + 24 * 60 * 60 * 1000);
+  const subscriptionExpiresAt = user.subscriptionExpiresAt ? new Date(user.subscriptionExpiresAt) : null;
+
+  const trialActive = now < trialExpiresAt;
+  const subActive = subscriptionExpiresAt ? (now < subscriptionExpiresAt) : false;
+  const active = trialActive || subActive;
+
+  let timeLeftStr = '';
+  let status = 'expired';
+  if (subActive) {
+    status = 'subscribed';
+    const diffMs = subscriptionExpiresAt.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    timeLeftStr = `${diffDays} days left`;
+  } else if (trialActive) {
+    status = 'trial';
+    const diffMs = trialExpiresAt.getTime() - now.getTime();
+    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+    if (diffHours > 24) {
+      timeLeftStr = `${Math.ceil(diffHours / 24)} days trial left`;
+    } else {
+      timeLeftStr = `${diffHours} hours trial left`;
+    }
+  } else {
+    status = 'expired';
+    timeLeftStr = 'Subscription expired';
+  }
+
+  return {
+    active,
+    status,
+    trialExpiresAt: trialExpiresAt.toISOString(),
+    subscriptionExpiresAt: subscriptionExpiresAt ? subscriptionExpiresAt.toISOString() : null,
+    timeLeftStr
+  };
+}
+
+// Renew subscription access (adds 30 days / 1 month)
+async function renewSubscription(userId) {
+  const now = new Date();
+  const durationMs = 30 * 24 * 60 * 60 * 1000; // 30 days (1 month)
+
+  let user = await getUserById(userId);
+  if (!user) return null;
+
+  let currentExpiry = user.subscriptionExpiresAt ? new Date(user.subscriptionExpiresAt) : null;
+  let newExpiry;
+  if (currentExpiry && currentExpiry > now) {
+    newExpiry = new Date(currentExpiry.getTime() + durationMs);
+  } else {
+    newExpiry = new Date(now.getTime() + durationMs);
+  }
+
+  const newExpiryIso = newExpiry.toISOString();
+
+  if (useMongo) {
+    try {
+      await User.updateOne({ id: userId }, { $set: { subscriptionExpiresAt: newExpiryIso } });
+      return newExpiryIso;
+    } catch (err) {
+      console.warn('[Database] MongoDB update subscription failed, falling back to local.', err.message);
+    }
+  }
+
+  const users = readUsersLocal();
+  const index = users.findIndex(u => u.id === userId);
+  if (index !== -1) {
+    users[index].subscriptionExpiresAt = newExpiryIso;
+    writeUsersLocal(users);
+    return newExpiryIso;
+  }
+  return null;
+}
+
 module.exports = {
   getUserByEmail,
   getUserById,
   createUser,
   verifyPassword,
   updateUserInterests,
-  addUserHistoryRecord
+  addUserHistoryRecord,
+  checkSubscriptionStatus,
+  renewSubscription
 };

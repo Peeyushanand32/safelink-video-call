@@ -7,6 +7,7 @@ const { OAuth2Client } = require('google-auth-library');
 const db = require('./database');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
+const Razorpay = require('razorpay');
 
 // Load configurations
 const CONFIG_PATH = path.join(__dirname, 'config.json');
@@ -27,6 +28,26 @@ const SMTP_HOST = process.env.SMTP_HOST || config.SMTP_HOST || '';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || config.SMTP_PORT || '587');
 const SMTP_USER = process.env.SMTP_USER || config.SMTP_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || config.SMTP_PASS || '';
+
+// Razorpay Configuration
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || config.RAZORPAY_KEY_ID || 'rzp_test_placeholder_key';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || config.RAZORPAY_KEY_SECRET || 'placeholder_secret';
+
+let razorpay = null;
+try {
+  // Initialize Razorpay client only if it's not a placeholder key
+  if (RAZORPAY_KEY_ID && !RAZORPAY_KEY_ID.includes('placeholder')) {
+    razorpay = new Razorpay({
+      key_id: RAZORPAY_KEY_ID,
+      key_secret: RAZORPAY_KEY_SECRET
+    });
+    console.log('[Razorpay] Configured with key:', RAZORPAY_KEY_ID);
+  } else {
+    console.log('[Razorpay] Simulator Mode active (default placeholder keys configured).');
+  }
+} catch (err) {
+  console.error('[Razorpay] Initialization error:', err.message);
+}
 
 // Temporary OTP Memory Storage
 let otpStore = {}; // { email: { otp: string, expiresAt: number } }
@@ -322,6 +343,7 @@ app.post('/api/auth/google', async (req, res) => {
 
 // 4. Retrieve logged in user info (Me)
 app.get('/api/auth/me', authenticateToken, (req, res) => {
+  const subStatus = db.checkSubscriptionStatus(req.user);
   res.json({
     user: {
       id: req.user.id,
@@ -329,7 +351,10 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
       email: req.user.email,
       avatar: req.user.avatar,
       interests: req.user.interests,
-      history: req.user.history || []
+      history: req.user.history || [],
+      trialExpiresAt: req.user.trialExpiresAt,
+      subscriptionExpiresAt: req.user.subscriptionExpiresAt,
+      subscription: subStatus
     }
   });
 });
@@ -346,6 +371,95 @@ app.post('/api/auth/interests', authenticateToken, async (req, res) => {
     res.json({ message: 'Interests updated successfully.', interests });
   } else {
     res.status(500).json({ error: 'Failed to update interests.' });
+  }
+});
+
+// 5.5 Razorpay Payments: Create Order
+app.post('/api/payment/create-order', authenticateToken, async (req, res) => {
+  try {
+    const amount = 4000; // 40 INR in paise
+    const currency = 'INR';
+
+    // Check if we are running in Simulator Mode (placeholder or unconfigured Razorpay client)
+    if (!razorpay) {
+      const mockOrderId = `order_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      console.log(`[Payment] Creating Simulated Order: ${mockOrderId}`);
+      return res.json({
+        id: mockOrderId,
+        currency,
+        amount,
+        isMock: true,
+        key: RAZORPAY_KEY_ID
+      });
+    }
+
+    // Otherwise, create actual Razorpay order
+    const options = {
+      amount: amount,
+      currency: currency,
+      receipt: `receipt_sub_${req.user.id}_${Date.now()}`
+    };
+
+    const order = await razorpay.orders.create(options);
+    console.log(`[Payment] Razorpay Order Created: ${order.id}`);
+    res.json({
+      id: order.id,
+      currency: order.currency,
+      amount: order.amount,
+      isMock: false,
+      key: RAZORPAY_KEY_ID
+    });
+
+  } catch (err) {
+    console.error('[Payment Create Order Error]:', err);
+    res.status(500).json({ error: 'Failed to create payment order. Try again.' });
+  }
+});
+
+// 5.6 Razorpay Payments: Verify Signature and Renew Subscription
+app.post('/api/payment/verify-payment', authenticateToken, async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({ error: 'Payment details missing.' });
+  }
+
+  try {
+    let isValid = false;
+
+    // Check if it's a simulated order
+    if (razorpay_order_id.startsWith('order_mock_') && razorpay_payment_id.startsWith('pay_mock_')) {
+      console.log('[Payment] Verifying Mock Payment for order:', razorpay_order_id);
+      isValid = true;
+    } else if (razorpay) {
+      // Real signature verification
+      const crypto = require('crypto');
+      const hmac = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET);
+      hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+      const generated_signature = hmac.digest('hex');
+      isValid = generated_signature === razorpay_signature;
+    }
+
+    if (!isValid) {
+      return res.status(400).json({ error: 'Payment verification failed. Invalid signature.' });
+    }
+
+    // Success: Renew user subscription by 30 days
+    const newExpiry = await db.renewSubscription(req.user.id);
+    if (!newExpiry) {
+      return res.status(500).json({ error: 'Failed to update subscription in database.' });
+    }
+
+    console.log(`[Payment] Success! User ${req.user.name} subscription renewed until ${newExpiry}`);
+    res.json({
+      success: true,
+      message: 'Subscription successfully activated for 1 month!',
+      subscriptionExpiresAt: newExpiry
+    });
+
+  } catch (err) {
+    console.error('[Payment Verification Error]:', err);
+    res.status(500).json({ error: 'Internal server error during verification.' });
   }
 });
 
@@ -370,25 +484,49 @@ io.on('connection', (socket) => {
   // When a user requests matchmaking
   socket.on('join-matchmaking', async (data) => {
     const { token } = data;
+    
+    if (!token) {
+      socket.emit('subscription-required', {
+        message: 'Authentication is required to enter matchmaking.'
+      });
+      return;
+    }
+
     let userId = null;
     let userName = 'Anonymous';
     let userAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${socket.id}`;
     let interests = data.interests || [];
 
-    // Authenticate token if present
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await db.getUserById(decoded.id);
-        if (user) {
-          userId = user.id;
-          userName = user.name;
-          userAvatar = user.avatar;
-          interests = user.interests || interests;
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const user = await db.getUserById(decoded.id);
+      if (user) {
+        // Enforce active subscription/trial check
+        const subStatus = db.checkSubscriptionStatus(user);
+        if (!subStatus.active) {
+          socket.emit('subscription-required', {
+            message: 'Your 1-day free trial or subscription has expired. Please renew your subscription to access matchmaking.',
+            subscription: subStatus
+          });
+          return;
         }
-      } catch (err) {
-        console.warn(`[Socket Server] Token verification failed for socket ${socket.id}:`, err.message);
+
+        userId = user.id;
+        userName = user.name;
+        userAvatar = user.avatar;
+        interests = user.interests || interests;
+      } else {
+        socket.emit('subscription-required', {
+          message: 'User account not found. Access denied.'
+        });
+        return;
       }
+    } catch (err) {
+      console.warn(`[Socket Server] Token verification failed for socket ${socket.id}:`, err.message);
+      socket.emit('subscription-required', {
+        message: 'Invalid or expired session. Please log in again.'
+      });
+      return;
     }
 
     console.log(`[Socket Server] ${userName} (${socket.id}) entering matchmaking queue.`);

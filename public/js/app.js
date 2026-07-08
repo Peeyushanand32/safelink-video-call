@@ -22,6 +22,7 @@ let currentUser = null;
 let userInterests = [];
 let connectionHistory = [];
 let googleClientId = '';
+let subscriptionStatus = null;
 
 // Web Audio API for Mic Meter
 let audioContext = null;
@@ -421,6 +422,13 @@ function initSocket() {
     console.log('[Socket] Connected to signaling server');
   });
 
+  socket.on('subscription-required', (data) => {
+    console.warn('[Socket] Matchmaking blocked:', data.message);
+    cancelMatchmaking();
+    alert(data.message);
+    openSubscriptionModal();
+  });
+
   socket.on('match-found', (data) => {
     console.log('[Socket] Match found! Room ID:', data.roomId, 'Peer:', data.peerName);
     currentRoomId = data.roomId;
@@ -498,6 +506,7 @@ function setupDashboardUI() {
 
   renderInterests();
   renderHistory();
+  renderSubscriptionDetails();
 }
 
 // Toggle Dropdown Panel
@@ -808,6 +817,12 @@ function updateMicLevelBar(percentage) {
 
 // Trigger Peer Matchmaking state
 function triggerMatchmaking() {
+  if (subscriptionStatus && !subscriptionStatus.active) {
+    alert('Your 1-day free trial or subscription has expired. Please renew your subscription to access matchmaking.');
+    openSubscriptionModal();
+    return;
+  }
+
   const dashboard = document.getElementById('dashboard-view');
   dashboard.classList.add('opacity-0', 'scale-95');
   dashboard.classList.remove('opacity-100', 'scale-100');
@@ -1379,4 +1394,183 @@ function cleanUpCallState() {
   currentPeerId = null;
   currentPeerName = 'Peer';
   currentPeerAvatar = '';
+}
+
+// ==================== SUBSCRIPTION & PAYMENT MANAGEMENT ====================
+
+// Navigate user to card view and animate
+function openSubscriptionModal() {
+  const subCard = document.getElementById('subscription-status-card');
+  if (subCard) {
+    subCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // Pulse animation styling trigger
+    subCard.classList.add('ring-4', 'ring-primary/50', 'scale-102', 'transition-all', 'duration-300');
+    setTimeout(() => {
+      subCard.classList.remove('ring-4', 'ring-primary/50', 'scale-102');
+    }, 2000);
+  }
+}
+
+let currentOrderId = null;
+let isSimulatedPayment = false;
+
+// Render active subscription values
+function renderSubscriptionDetails() {
+  if (!currentUser || !currentUser.subscription) return;
+  
+  const sub = currentUser.subscription;
+  subscriptionStatus = sub;
+  
+  const badge = document.getElementById('subscription-status-badge');
+  const timeLeft = document.getElementById('subscription-time-left');
+  const desc = document.getElementById('subscription-status-desc');
+  const actionBtn = document.getElementById('subscription-action-btn');
+  const btnText = document.getElementById('subscription-btn-text');
+  const upgradeNav = document.getElementById('upgrade-nav-link');
+
+  // Hide nav link highlight if already premium subscribed
+  if (upgradeNav) {
+    if (sub.status === 'subscribed') {
+      upgradeNav.classList.add('hidden');
+    } else {
+      upgradeNav.classList.remove('hidden');
+    }
+  }
+
+  if (sub.status === 'subscribed') {
+    badge.className = 'inline-flex items-center gap-xs px-md py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    badge.innerText = 'Premium';
+    timeLeft.innerText = sub.timeLeftStr;
+    desc.innerText = 'Thank you for supporting SafeLink! Your premium subscription is active.';
+    btnText.innerText = 'Extend Premium (₹40)';
+    actionBtn.className = 'w-full flex items-center justify-center gap-sm py-md px-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold rounded-xl hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-300 active:scale-95 shadow-md';
+  } else if (sub.status === 'trial') {
+    badge.className = 'inline-flex items-center gap-xs px-md py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30';
+    badge.innerText = 'Free Trial';
+    timeLeft.innerText = sub.timeLeftStr;
+    desc.innerText = 'Your 1-day free trial is active. Upgrade to premium for uninterrupted secure matchmaking.';
+    btnText.innerText = 'Upgrade to Premium (₹40)';
+    actionBtn.className = 'w-full flex items-center justify-center gap-sm py-md px-xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(20,184,166,0.4)] transition-all duration-300 active:scale-95 shadow-md';
+  } else {
+    badge.className = 'inline-flex items-center gap-xs px-md py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-error/20 text-error border border-error/30';
+    badge.innerText = 'Expired';
+    timeLeft.innerText = 'Access Expired';
+    desc.innerText = 'Your free trial or premium access has expired. Pay ₹40 to reactivate 1 month of premium calling.';
+    btnText.innerText = 'Reactivate Access (₹40)';
+    actionBtn.className = 'w-full flex items-center justify-center gap-sm py-md px-xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(20,184,166,0.4)] transition-all duration-300 active:scale-95 shadow-md animate-pulse';
+  }
+}
+
+// Trigger subscription payment flows
+async function startRazorpayPayment() {
+  if (!jwtToken) {
+    alert('Please sign in to upgrade your subscription.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/payment/create-order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`
+      }
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create payment order.');
+
+    currentOrderId = data.id;
+    isSimulatedPayment = data.isMock;
+
+    if (isSimulatedPayment) {
+      openPaymentSimulator();
+    } else {
+      const options = {
+        "key": data.key,
+        "amount": data.amount,
+        "currency": data.currency,
+        "name": "SafeLink Secure Video",
+        "description": "1 Month Subscription Access",
+        "image": document.getElementById('header-avatar').src || "https://api.dicebear.com/7.x/bottts/svg?seed=SafeLink",
+        "order_id": data.id,
+        "handler": async function (response) {
+          await verifyPaymentOnServer(response.razorpay_order_id, response.razorpay_payment_id, response.razorpay_signature);
+        },
+        "prefill": {
+          "name": currentUser.name,
+          "email": currentUser.email
+        },
+        "theme": {
+          "color": "#14b8a6"
+        }
+      };
+      const rzp = new Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        alert('Transaction Failed: ' + response.error.description);
+      });
+      rzp.open();
+    }
+
+  } catch (err) {
+    console.error('[Payment Flow]:', err);
+    alert(err.message);
+  }
+}
+
+// Verify payment details with backend
+async function verifyPaymentOnServer(orderId, paymentId, signature) {
+  try {
+    const res = await fetch('/api/payment/verify-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`
+      },
+      body: JSON.stringify({
+        razorpay_order_id: orderId,
+        razorpay_payment_id: paymentId,
+        razorpay_signature: signature
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to verify transaction.');
+
+    alert('Success! Subscription successfully activated for 1 month.');
+    closePaymentSimulator();
+
+    // Refresh UI session details
+    await loadUserSession();
+
+  } catch (err) {
+    console.error('[Verification]:', err);
+    alert('Verification Error: ' + err.message);
+  }
+}
+
+// Sandbox Simulator modal controllers
+function openPaymentSimulator() {
+  const modal = document.getElementById('payment-simulator-modal');
+  modal.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+  modal.classList.add('opacity-100', 'scale-100');
+
+  document.getElementById('simulator-success-btn').onclick = async () => {
+    const mockPaymentId = `pay_mock_${Date.now()}`;
+    const mockSignature = `signature_mock_${Date.now()}`;
+    await verifyPaymentOnServer(currentOrderId, mockPaymentId, mockSignature);
+  };
+
+  document.getElementById('simulator-fail-btn').onclick = () => {
+    alert('Transaction Declined (Simulated).');
+    closePaymentSimulator();
+  };
+}
+
+function closePaymentSimulator() {
+  const modal = document.getElementById('payment-simulator-modal');
+  modal.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+  modal.classList.remove('opacity-100', 'scale-100');
+  currentOrderId = null;
 }

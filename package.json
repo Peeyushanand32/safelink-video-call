@@ -16,6 +16,7 @@
     "mongodb": "^7.5.0",
     "mongoose": "^9.7.4",
     "nodemailer": "^9.0.3",
+    "razorpay": "^2.9.6",
     "socket.io": "^4.7.5"
   }
 }
