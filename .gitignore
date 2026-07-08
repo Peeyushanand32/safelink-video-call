@@ -1,0 +1,10 @@
+node_modules/
+config.json
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+.DS_Store
+dist/
+build/

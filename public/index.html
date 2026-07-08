@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>SafeLink | Secure Peer-to-Peer Video Call</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <link href="/css/style.css" rel="stylesheet"/>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-surface": "#dae2fd",
+            "error-container": "#93000a",
+            "on-background": "#dae2fd",
+            "surface": "#0b1326",
+            "outline": "#859490",
+            "surface-container-low": "#131b2e",
+            "surface-container-highest": "#2d3449",
+            "tertiary-fixed-dim": "#ffb2b7",
+            "outline-variant": "#3c4947",
+            "on-secondary-fixed": "#07006c",
+            "surface-variant": "#2d3449",
+            "secondary-container": "#3131c0",
+            "on-secondary-fixed-variant": "#2f2ebe",
+            "tertiary-container": "#ff7b88",
+            "on-tertiary": "#67001b",
+            "secondary-fixed": "#e1e0ff",
+            "secondary": "#c0c1ff",
+            "on-tertiary-fixed-variant": "#92002a",
+            "error": "#ffb4ab",
+            "surface-bright": "#31394d",
+            "primary": "#4fdbc8",
+            "inverse-primary": "#006b5f",
+            "primary-fixed-dim": "#4fdbc8",
+            "surface-container-lowest": "#060e20",
+            "background": "#0b1326",
+            "surface-container-high": "#222a3d",
+            "on-primary-fixed": "#00201c",
+            "on-tertiary-container": "#7a0022",
+            "on-surface-variant": "#bbcac6",
+            "primary-fixed": "#71f8e4",
+            "surface-container": "#171f33",
+            "tertiary-fixed": "#ffdadb",
+            "surface-dim": "#0b1326",
+            "tertiary": "#ffb2b7",
+            "on-primary-container": "#00423b",
+            "on-primary": "#003731",
+            "on-error": "#690005",
+            "on-error-container": "#ffdad6",
+            "primary-container": "#14b8a6",
+            "inverse-on-surface": "#283044",
+            "on-tertiary-fixed": "#40000d",
+            "on-primary-fixed-variant": "#005048",
+            "on-secondary": "#1000a9",
+            "secondary-fixed-dim": "#c0c1ff",
+            "on-secondary-container": "#b0b2ff",
+            "surface-tint": "#4fdbc8",
+            "inverse-surface": "#dae2fd"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "lg": "24px",
+            "base": "4px",
+            "margin-desktop": "40px",
+            "gutter": "16px",
+            "sm": "8px",
+            "xl": "32px",
+            "margin-mobile": "16px",
+            "md": "16px",
+            "xs": "4px"
+          },
+          "fontFamily": {
+            "headline-md": ["Inter"],
+            "label-md": ["Inter"],
+            "label-sm": ["Inter"],
+            "display-lg": ["Inter"],
+            "headline-lg": ["Inter"],
+            "headline-lg-mobile": ["Inter"],
+            "body-lg": ["Inter"],
+            "body-md": ["Inter"]
+          },
+          "fontSize": {
+            "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+            "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+            "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+            "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+            "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+            "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+            "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+            "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-background text-on-surface flex flex-col min-h-screen relative overflow-x-hidden">
+
+  <!-- ==================== AUTHENTICATION VIEW (LOGIN/SIGNUP) ==================== -->
+  <main id="auth-view" class="flex-grow flex items-center justify-center px-margin-mobile py-xl z-30 transition-all duration-500">
+    <div class="glass-card rounded-xl p-lg md:p-xl max-w-md w-full shadow-2xl relative border border-primary/20">
+      
+      <!-- Brand Logo -->
+      <div class="flex flex-col items-center mb-lg">
+        <span class="material-symbols-outlined text-primary text-5xl animate-pulse" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+        <h2 class="font-headline-lg text-headline-lg font-bold text-primary mt-2">SafeLink</h2>
+        <p class="text-label-sm text-on-surface-variant">Secure Peer-to-Peer Video Call</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="grid grid-cols-2 gap-sm p-xs bg-surface-container-lowest rounded-xl mb-lg border border-outline-variant/20">
+        <button id="tab-login-btn" onclick="toggleAuthTab('login')" class="py-md font-label-md text-label-md rounded-lg bg-primary text-on-primary font-semibold transition-all">Sign In</button>
+        <button id="tab-signup-btn" onclick="toggleAuthTab('signup')" class="py-md font-label-md text-label-md rounded-lg text-on-surface-variant hover:text-on-surface transition-all">Sign Up</button>
+      </div>
+
+      <!-- Error Alert -->
+      <div id="auth-error-alert" class="hidden p-md bg-error/10 border border-error/30 text-error rounded-xl font-body-md text-body-md mb-md flex items-center gap-sm">
+        <span class="material-symbols-outlined">error</span>
+        <span id="auth-error-text">Authentication Error occurred.</span>
+      </div>
+
+      <!-- SIGN IN FORM -->
+      <form id="login-form" class="space-y-md">
+        <div class="space-y-sm">
+          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Email Address</label>
+          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
+            <span class="material-symbols-outlined text-on-surface-variant">mail</span>
+            <input type="email" id="login-email" required placeholder="name@domain.com" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
+          </div>
+        </div>
+
+        <div class="space-y-sm">
+          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Password</label>
+          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
+            <span class="material-symbols-outlined text-on-surface-variant">lock</span>
+            <input type="password" id="login-password" required placeholder="••••••••" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-md px-xl bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(79,219,200,0.3)] transition-all active:scale-95 shadow-md">
+          Sign In
+        </button>
+      </form>
+
+      <!-- SIGN UP FORM -->
+      <form id="signup-form" class="space-y-md hidden">
+        <div class="space-y-sm">
+          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Full Name</label>
+          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
+            <span class="material-symbols-outlined text-on-surface-variant">person</span>
+            <input type="text" id="signup-name" required placeholder="Alex Rivera" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
+          </div>
+        </div>
+
+        <div class="space-y-sm">
+          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Email Address</label>
+          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
+            <span class="material-symbols-outlined text-on-surface-variant">mail</span>
+            <input type="email" id="signup-email" required placeholder="name@domain.com" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
+          </div>
+        </div>
+
+        <div class="space-y-sm">
+          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Password</label>
+          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
+            <span class="material-symbols-outlined text-on-surface-variant">lock</span>
+            <input type="password" id="signup-password" required placeholder="Choose a secure password" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-md px-xl bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(79,219,200,0.3)] transition-all active:scale-95 shadow-md">
+          Create Account
+        </button>
+      </form>
+
+      <!-- Divider line -->
+      <div class="flex items-center gap-md my-lg">
+        <div class="h-[1px] bg-outline-variant/30 flex-grow"></div>
+        <span class="text-label-sm text-on-surface-variant">or</span>
+        <div class="h-[1px] bg-outline-variant/30 flex-grow"></div>
+      </div>
+
+      <!-- Google Sign In API Container -->
+      <div id="google-auth-elements-wrapper" class="space-y-md">
+        <!-- Render real Google button if Client ID exists, otherwise Fallback to custom styled button -->
+        <button type="button" id="custom-google-btn" onclick="handleGoogleSignInTrigger()" class="w-full flex items-center justify-center gap-md py-md px-xl bg-surface-container-highest text-on-surface hover:text-primary hover:border-primary border border-outline-variant/30 rounded-xl font-bold transition-all active:scale-95 shadow-md">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+
+        <!-- Hidden native Google Button container, will render programmatically if Client ID configured -->
+        <div id="google-native-signin-button" class="w-full flex justify-center hidden"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== TOP NAVIGATION HEADER (Hidden by default) ==================== -->
+  <header id="nav-header" class="bg-surface/80 backdrop-blur-xl docked full-width top-0 sticky z-40 border-b border-outline-variant/10 shadow-md transition-all duration-300 hidden">
+    <div class="flex justify-between items-center px-lg py-md w-full max-w-7xl mx-auto">
+      <div class="flex items-center gap-sm">
+        <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+        <h1 class="font-headline-md text-headline-md font-bold text-primary">SafeLink</h1>
+      </div>
+      <nav class="hidden md:flex items-center gap-xl">
+        <a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 cursor-pointer nav-link active-link" href="#" onclick="showSection('dashboard')">Dashboard</a>
+        <a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 cursor-pointer nav-link" href="#" id="find-match-nav" onclick="triggerMatchmaking()">Find Match</a>
+        <a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 cursor-pointer nav-link" href="#" onclick="alert('SafeLink Discovery helps matching you securely.')">Discovery</a>
+      </nav>
+      
+      <!-- Profile Header Chip with Dropdown Panel -->
+      <div class="flex items-center gap-md relative">
+        <button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors active:scale-90" id="settings-toggle-btn">settings</button>
+        
+        <!-- Interactive profile toggle -->
+        <div onclick="toggleProfileDropdown()" class="flex items-center gap-sm px-sm py-xs rounded-full bg-primary-container text-on-primary-container font-bold border-b-2 border-primary pb-1 cursor-pointer active:scale-95 transition-all select-none">
+          <div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-primary/20">
+            <img class="w-full h-full object-cover" id="header-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=guest" alt="Avatar"/>
+          </div>
+          <span class="font-label-md text-label-md hidden sm:inline" id="header-username">Loading...</span>
+          <span class="material-symbols-outlined text-sm hidden sm:inline leading-none">arrow_drop_down</span>
+        </div>
+
+        <!-- Profile Dropdown Menu Card -->
+        <div id="profile-dropdown-menu" class="absolute right-0 top-14 w-56 glass-card rounded-xl shadow-2xl p-md hidden border border-primary/20 z-50 flex flex-col gap-sm">
+          <div class="px-sm py-xs border-b border-outline-variant/10 pb-md text-center md:text-left flex flex-col items-center md:items-start gap-1">
+            <span id="dropdown-full-name" class="font-label-md text-label-md font-bold text-on-surface block leading-tight">Alex Rivera</span>
+            <span id="dropdown-email" class="text-[11px] text-on-surface-variant block font-mono">alex@safelink.io</span>
+          </div>
+          <button onclick="toggleAuthEditDetails()" class="w-full flex items-center gap-sm px-sm py-md text-label-md hover:bg-surface-container-high hover:text-primary text-on-surface-variant transition-colors rounded-lg text-left">
+            <span class="material-symbols-outlined text-lg">edit</span>
+            <span>Edit Profile</span>
+          </button>
+          <button onclick="handleUserSignOut()" class="w-full flex items-center gap-sm px-sm py-md text-label-md hover:bg-error/15 hover:text-error text-error/80 transition-colors rounded-lg text-left">
+            <span class="material-symbols-outlined text-lg">logout</span>
+            <span>Sign Out Session</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN DASHBOARD VIEW (Hidden by default) ==================== -->
+  <main id="dashboard-view" class="flex-grow w-full max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop py-xl transition-all duration-500 transform scale-100 opacity-100 hidden">
+    
+    <!-- Hero / Action Section -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-xl gap-md">
+      <div>
+        <h2 class="font-headline-lg text-headline-lg text-on-surface">Secure Video Communication</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant">Select your device preferences, customize matchmaking tags, and connect peer-to-peer.</p>
+      </div>
+      <button onclick="triggerMatchmaking()" class="flex items-center gap-sm px-xl py-md bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_20px_rgba(79,219,200,0.4)] transition-all duration-300 group active:scale-95 shadow-lg">
+        <span class="material-symbols-outlined text-[20px] animate-pulse">wifi_tethering</span>
+        <span class="font-label-md text-label-md">Start Matchmaking</span>
+      </button>
+    </div>
+
+    <!-- Bento Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+      
+      <!-- Left Column: User Profile & Device Setup -->
+      <div class="lg:col-span-5 space-y-lg">
+        
+        <!-- Identity Card -->
+        <div class="glass-card rounded-xl p-lg flex flex-col items-center text-center">
+          <div class="relative w-32 h-32 mb-md">
+            <div class="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
+            <div class="relative w-full h-full rounded-full border-4 border-primary overflow-hidden">
+              <img class="w-full h-full object-cover" id="dashboard-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=guest" alt="Avatar"/>
+            </div>
+            <button class="absolute bottom-1 right-1 w-10 h-10 bg-primary text-on-primary rounded-full flex items-center justify-center border-4 border-surface shadow-lg hover:scale-110 transition-transform active:scale-90" onclick="toggleAuthEditDetails()">
+              <span class="material-symbols-outlined text-sm">edit</span>
+            </button>
+          </div>
+          <h3 id="display-name" class="font-headline-md text-headline-md text-on-surface">Guest User</h3>
+          <p id="account-provider-badge" class="font-body-md text-body-md text-on-surface-variant mb-md">Verified User</p>
+          <div class="flex gap-sm">
+            <div class="flex items-center gap-xs px-md py-xs bg-surface-container-high rounded-full border border-outline-variant/30">
+              <span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+              <span class="text-label-sm font-label-sm text-on-surface">ID Verified</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hardware Settings -->
+        <div class="glass-card rounded-xl p-lg">
+          <h4 class="font-label-md text-label-md font-bold text-primary mb-md flex items-center gap-sm">
+            <span class="material-symbols-outlined">settings_input_component</span>
+            Hardware &amp; Connectivity
+          </h4>
+          
+          <div class="space-y-md">
+            
+            <!-- Camera Setting -->
+            <div class="space-y-sm">
+              <div class="flex justify-between items-center">
+                <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Camera Input</label>
+                <button id="toggle-preview-btn" class="text-label-sm text-primary hover:underline flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">videocam_off</span>
+                  <span>Stop Preview</span>
+                </button>
+              </div>
+              <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
+                <span class="material-symbols-outlined text-on-surface-variant">videocam</span>
+                <select id="camera-select" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 cursor-pointer">
+                  <option class="bg-surface">Loading cameras...</option>
+                </select>
+              </div>
+              
+              <!-- Video Preview Box -->
+              <div class="w-full aspect-video rounded-lg bg-black/80 video-preview-glow overflow-hidden relative border border-outline-variant/20">
+                <video id="local-preview" autoplay playsinline muted class="w-full h-full object-cover transition-opacity duration-300"></video>
+                
+                <div id="preview-fallback" class="absolute inset-0 flex items-center justify-center text-on-surface-variant/40 flex-col gap-sm bg-surface-container-low hidden">
+                  <span class="material-symbols-outlined text-4xl">visibility_off</span>
+                  <span class="text-label-sm uppercase tracking-widest font-bold">Camera Disabled</span>
+                </div>
+                
+                <div id="preview-loading" class="absolute inset-0 flex items-center justify-center text-on-surface-variant/40 flex-col gap-sm bg-surface-container-low">
+                  <span class="material-symbols-outlined text-4xl animate-spin">sync</span>
+                  <span class="text-label-sm uppercase tracking-widest font-bold">Initializing Stream</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Microphone Setting -->
+            <div class="space-y-sm">
+              <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Microphone Input</label>
+              <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
+                <span class="material-symbols-outlined text-on-surface-variant">mic</span>
+                <select id="mic-select" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 cursor-pointer">
+                  <option class="bg-surface">Loading microphones...</option>
+                </select>
+              </div>
+              
+              <!-- Microphone volume levels -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs text-on-surface-variant px-1">
+                  <span>Mic Level Meter</span>
+                  <span id="mic-db-indicator">Active</span>
+                </div>
+                <div class="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+                  <div id="mic-level-bar" class="h-full bg-primary w-[0%] shadow-[0_0_10px_#4fdbc8] transition-all duration-75"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Matchmaking Tags & Connection History -->
+      <div class="lg:col-span-7 space-y-lg">
+        
+        <!-- Interests & Preferences Section -->
+        <div class="glass-card rounded-xl p-lg">
+          <div class="flex justify-between items-center mb-md">
+            <h4 class="font-label-md text-label-md font-bold text-primary flex items-center gap-sm">
+              <span class="material-symbols-outlined">interests</span>
+              Discovery Matchmaking Preferences
+            </h4>
+            <button id="add-interest-trigger-btn" class="text-primary hover:underline font-label-md text-label-md flex items-center gap-xs active:scale-95">
+              <span class="material-symbols-outlined text-[16px]">add_circle</span>
+              Add New Tag
+            </button>
+          </div>
+          <p class="text-body-md font-body-md text-on-surface-variant mb-lg">
+            Add interest tags below. SafeLink matches you with other active online users sharing these tags.
+          </p>
+          
+          <div id="interests-tags-container" class="flex flex-wrap gap-sm">
+            <!-- Dynamic tags will be placed here -->
+          </div>
+        </div>
+
+        <!-- Connection History -->
+        <div class="glass-card rounded-xl overflow-hidden flex flex-col h-[460px]">
+          <div class="p-lg border-b border-outline-variant/10 flex items-center justify-between bg-surface-container-low/50">
+            <div>
+              <h4 class="font-label-md text-label-md font-bold text-primary flex items-center gap-sm">
+                <span class="material-symbols-outlined">history</span>
+                Recent Cryptographic Connections
+              </h4>
+              <p class="text-label-sm font-label-sm text-on-surface-variant">Anonymized locally on your machine for privacy.</p>
+            </div>
+            <button onclick="clearHistory()" class="material-symbols-outlined text-on-surface-variant hover:text-error transition-colors p-sm rounded-full hover:bg-error/10 active:scale-90" title="Clear History Log">delete_sweep</button>
+          </div>
+          
+          <div class="flex-grow overflow-y-auto custom-scrollbar">
+            <!-- Table Header -->
+            <div class="grid grid-cols-12 px-lg py-sm text-label-sm font-label-sm text-on-surface-variant border-b border-outline-variant/10 uppercase tracking-tighter sticky top-0 bg-surface z-10">
+              <div class="col-span-5">Identity Hash</div>
+              <div class="col-span-3 text-center">Duration</div>
+              <div class="col-span-4 text-right">Timestamp</div>
+            </div>
+            
+            <div id="history-log-container">
+              <!-- Dynamically populated connection logs -->
+            </div>
+          </div>
+          
+          <!-- Bottom Summary -->
+          <div class="p-md bg-surface-container-lowest/50 border-t border-outline-variant/10 text-center">
+            <span id="history-summary-text" class="text-label-sm font-label-sm text-on-surface-variant italic">No connection history.</span>
+          </div>
+        </div>
+
+        <!-- Safety Shield Indicator -->
+        <div class="glass-card rounded-xl p-lg bg-primary/5 border-primary/20 flex items-center gap-lg">
+          <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0 animate-pulse">
+            <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">security</span>
+          </div>
+          <div>
+            <h5 class="font-headline-md text-headline-md text-on-surface">End-to-End Cryptographic Security</h5>
+            <p class="font-body-md text-body-md text-on-surface-variant">Your voice, video, and text data flow directly between you and your peer. No streams are decrypted or cached on our server routers.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== MATCHMAKING VIEW (OVERLAY MODAL) ==================== -->
+  <div id="matchmaking-view" class="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md transition-all duration-500 opacity-0 pointer-events-none transform scale-95">
+    <div class="glass-card rounded-xl p-xl max-w-md w-full mx-4 flex flex-col items-center text-center shadow-2xl relative overflow-hidden border border-primary/20">
+      
+      <!-- Sonar Radar Scan Indicator -->
+      <div class="relative w-48 h-48 mb-xl flex items-center justify-center">
+        <div class="radar-pulse circle-1 absolute inset-0 border border-primary/40 rounded-full animate-ping"></div>
+        <div class="radar-pulse circle-2 absolute inset-4 border border-primary/20 rounded-full animate-ping" style="animation-delay: 0.6s"></div>
+        <div class="radar-pulse circle-3 absolute inset-8 border border-primary/10 rounded-full animate-ping" style="animation-delay: 1.2s"></div>
+        
+        <div class="absolute inset-0 rounded-full border border-outline-variant/30 flex items-center justify-center">
+          <div class="radar-line absolute w-1/2 h-[2px] bg-gradient-to-r from-primary to-transparent origin-left top-1/2 left-1/2"></div>
+        </div>
+        
+        <div class="w-24 h-24 rounded-full border-4 border-primary z-10 overflow-hidden relative shadow-lg">
+          <img class="w-full h-full object-cover" id="matchmaking-avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=guest" alt="Avatar"/>
+        </div>
+      </div>
+
+      <h3 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Matching in Progress</h3>
+      <p id="matchmaking-status-text" class="font-body-md text-body-md text-primary animate-pulse mb-md">Scanning for active SafeLink users...</p>
+      
+      <!-- Tags matching with -->
+      <div class="w-full bg-surface-container-low p-md rounded-lg border border-outline-variant/20 mb-xl">
+        <span class="text-label-sm text-on-surface-variant block mb-sm">Matching with interests:</span>
+        <div id="matchmaking-tags-list" class="flex flex-wrap gap-xs justify-center">
+          <!-- Active search tags populated dynamically -->
+        </div>
+      </div>
+
+      <button onclick="cancelMatchmaking()" class="w-full py-md px-xl bg-surface-container-highest text-on-surface hover:text-error hover:bg-error/10 font-bold rounded-xl border border-outline-variant/30 transition-all active:scale-95">
+        Cancel Matchmaking
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== CALL SCREEN VIEW (FULL-SCREEN LAYOUT) ==================== -->
+  <main id="call-view" class="fixed inset-0 z-40 bg-[#060a12] flex flex-col justify-between transition-all duration-500 opacity-0 pointer-events-none transform translate-y-8">
+    
+    <!-- Top Call Bar -->
+    <header class="absolute top-0 inset-x-0 p-lg flex justify-between items-center z-20 pointer-events-none">
+      <div class="flex items-center gap-md px-lg py-sm bg-surface-container-lowest/80 backdrop-blur-md rounded-full border border-primary/20 shadow-lg pointer-events-auto">
+        <span class="material-symbols-outlined text-primary text-[20px] animate-pulse" style="font-variation-settings: 'FILL' 1;">security</span>
+        <div>
+          <span class="text-label-sm text-on-surface font-semibold block leading-none">SafeLink E2E Secured</span>
+          <span id="peer-hash-label" class="text-[10px] text-on-surface-variant font-mono leading-none">Peer ID: connecting...</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-sm pointer-events-auto">
+        <div class="px-md py-sm bg-surface-container-lowest/80 backdrop-blur-md rounded-full border border-outline-variant/20 shadow-lg flex items-center gap-sm">
+          <span class="w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
+          <span id="call-duration-timer" class="font-mono text-label-md text-on-surface">00:00</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Video Grid Area -->
+    <div class="relative flex-grow flex items-center justify-center overflow-hidden h-full w-full">
+      
+      <!-- REMOTE VIDEO ELEMENT -->
+      <div class="absolute inset-0 bg-[#0a0f1d] flex items-center justify-center overflow-hidden">
+        <video id="remote-video" autoplay playsinline class="w-full h-full object-cover transition-all duration-700 opacity-0"></video>
+        
+        <!-- Peer Connection State Screen -->
+        <div id="call-waiting-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-surface/95 gap-md z-10">
+          
+          <!-- Large matched peer representation -->
+          <div class="relative w-32 h-32 mb-md flex items-center justify-center">
+            <div class="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
+            <img id="call-peer-avatar" class="w-24 h-24 rounded-full border-4 border-primary z-10 object-cover" src="https://api.dicebear.com/7.x/bottts/svg?seed=peer" alt="Peer"/>
+          </div>
+
+          <h3 id="call-peer-name" class="text-headline-md font-semibold text-on-surface">Connecting to Peer...</h3>
+          <p class="text-body-md text-on-surface-variant px-lg text-center max-w-sm">Establishing WebRTC handshake and exchanging crypto keys directly with peer.</p>
+          <div class="flex flex-wrap gap-xs justify-center max-w-xs mt-sm" id="call-peer-tags">
+            <!-- Peer tags will go here -->
+          </div>
+        </div>
+
+        <!-- Remote camera muted / off fallback screen -->
+        <div id="remote-video-fallback" class="absolute inset-0 flex flex-col items-center justify-center bg-surface-container-low hidden z-10">
+          <div class="w-24 h-24 rounded-full bg-surface-container-highest flex items-center justify-center mb-md border border-outline-variant/30">
+            <span class="material-symbols-outlined text-on-surface-variant text-4xl">videocam_off</span>
+          </div>
+          <h3 class="text-headline-md font-semibold text-on-surface">Video Feed Paused</h3>
+          <p class="text-body-md text-on-surface-variant">The other user turned off their camera.</p>
+        </div>
+      </div>
+
+      <!-- LOCAL VIDEO PIP ELEMENT -->
+      <div id="local-video-container" class="absolute right-6 bottom-32 sm:bottom-28 md:right-8 md:top-24 w-36 sm:w-48 aspect-video rounded-xl overflow-hidden border-2 border-primary/30 shadow-2xl z-30 transition-transform hover:scale-105 active:scale-95 cursor-pointer bg-black/60 group">
+        <video id="local-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+        <div id="local-video-fallback" class="absolute inset-0 flex flex-col items-center justify-center bg-surface-container-low hidden">
+          <span class="material-symbols-outlined text-on-surface-variant text-xl">videocam_off</span>
+        </div>
+        <div class="absolute bottom-2 left-2 px-md py-0.5 bg-surface/85 backdrop-blur-md border border-outline-variant/20 rounded-md pointer-events-none">
+          <span class="text-[10px] text-on-surface font-semibold uppercase tracking-wider">You</span>
+        </div>
+      </div>
+
+      <!-- CHAT SIDE DRAWER -->
+      <aside id="chat-sidebar" class="absolute right-0 top-0 bottom-0 w-80 bg-surface-container-low/95 backdrop-blur-xl border-l border-outline-variant/20 shadow-2xl z-20 flex flex-col transform translate-x-full transition-transform duration-300">
+        
+        <div class="p-lg border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low">
+          <div class="flex items-center gap-sm">
+            <span class="material-symbols-outlined text-primary text-xl">lock_messages</span>
+            <span class="text-label-md font-bold text-on-surface">Secure Call Chat</span>
+          </div>
+          <button onclick="toggleChatDrawer(false)" class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors p-sm rounded-full hover:bg-surface-container-high active:scale-90">
+            close
+          </button>
+        </div>
+
+        <div id="chat-messages-container" class="flex-grow p-lg overflow-y-auto space-y-md custom-scrollbar">
+          <div class="flex justify-center my-md">
+            <span class="text-[10px] text-primary/80 bg-primary/10 border border-primary/20 rounded-full px-md py-1 font-mono uppercase tracking-wider">
+              🔒 End-to-End Encrypted Tunnel
+            </span>
+          </div>
+          
+          <div id="chat-log-list" class="space-y-md">
+            <!-- Messages -->
+          </div>
+        </div>
+
+        <form id="chat-form" class="p-md border-t border-outline-variant/10 bg-surface-container-low flex items-center gap-sm">
+          <input id="chat-input" type="text" autocomplete="off" placeholder="Type encrypted message..." class="bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/40 rounded-xl px-md py-md text-body-md border border-outline-variant/30 focus:border-primary focus:ring-0 focus:outline-none flex-grow" required />
+          <button type="submit" class="w-10 h-10 bg-primary text-on-primary rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform flex-shrink-0">
+            <span class="material-symbols-outlined text-xl">send</span>
+          </button>
+        </form>
+
+      </aside>
+
+    </div>
+
+    <!-- Floating bottom Video Controls Bar -->
+    <div class="absolute bottom-6 inset-x-0 flex flex-col items-center gap-md z-30 pointer-events-none">
+      <div class="px-xl py-md bg-surface-container-lowest/80 backdrop-blur-xl rounded-full border border-outline-variant/10 shadow-2xl flex items-center gap-lg pointer-events-auto">
+        
+        <button id="call-mic-btn" class="w-12 h-12 rounded-full flex items-center justify-center bg-primary text-on-primary hover:scale-110 active:scale-95 transition-all shadow-md group relative">
+          <span class="material-symbols-outlined">mic</span>
+          <span class="tooltip hidden group-hover:block absolute bottom-14 bg-surface text-on-surface border border-outline-variant/20 rounded px-2 py-1 text-xs whitespace-nowrap">Mute Mic</span>
+        </button>
+
+        <button id="call-video-btn" class="w-12 h-12 rounded-full flex items-center justify-center bg-primary text-on-primary hover:scale-110 active:scale-95 transition-all shadow-md group relative">
+          <span class="material-symbols-outlined">videocam</span>
+          <span class="tooltip hidden group-hover:block absolute bottom-14 bg-surface text-on-surface border border-outline-variant/20 rounded px-2 py-1 text-xs whitespace-nowrap">Disable Video</span>
+        </button>
+
+        <button id="call-screenshare-btn" class="w-12 h-12 rounded-full flex items-center justify-center bg-surface-container-highest text-on-surface hover:text-primary hover:scale-110 active:scale-95 transition-all shadow-md group relative">
+          <span class="material-symbols-outlined">present_to_all</span>
+          <span class="tooltip hidden group-hover:block absolute bottom-14 bg-surface text-on-surface border border-outline-variant/20 rounded px-2 py-1 text-xs whitespace-nowrap">Share Screen</span>
+        </button>
+
+        <button id="call-chat-btn" class="w-12 h-12 rounded-full flex items-center justify-center bg-surface-container-highest text-on-surface hover:text-primary hover:scale-110 active:scale-95 transition-all shadow-md group relative">
+          <span class="material-symbols-outlined">chat</span>
+          <span id="chat-unread-badge" class="absolute top-1 right-1 w-3 h-3 bg-primary border-2 border-surface-container-lowest rounded-full hidden"></span>
+          <span class="tooltip hidden group-hover:block absolute bottom-14 bg-surface text-on-surface border border-outline-variant/20 rounded px-2 py-1 text-xs whitespace-nowrap">Toggle Chat</span>
+        </button>
+
+        <div class="h-8 w-[1px] bg-outline-variant/30"></div>
+
+        <button id="call-hangup-btn" class="w-12 h-12 rounded-full flex items-center justify-center bg-[#5c1322] hover:bg-[#85162a] text-error hover:scale-110 active:scale-95 transition-all shadow-md group relative">
+          <span class="material-symbols-outlined text-[#ffb2b7]" style="font-variation-settings: 'FILL' 1;">call_end</span>
+          <span class="tooltip hidden group-hover:block absolute bottom-14 bg-surface text-on-surface border border-outline-variant/20 rounded px-2 py-1 text-xs whitespace-nowrap">Disconnect Call</span>
+        </button>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==================== FOOTER (Hidden by default) ==================== -->
+  <footer id="footer-section" class="bg-surface-container-lowest w-full py-xl mt-auto border-t border-outline-variant/20 shadow-inner transition-all duration-300 hidden">
+    <div class="flex flex-col md:flex-row justify-between items-center px-margin-desktop gap-md w-full max-w-7xl mx-auto">
+      <div class="flex flex-col items-center md:items-start gap-xs">
+        <span class="font-headline-sm text-headline-sm font-black text-on-surface">SafeLink Video</span>
+        <span class="font-label-sm text-label-sm text-on-surface-variant opacity-60">© 2026 SafeLink Video. All rights reserved.</span>
+      </div>
+      <div class="flex flex-wrap justify-center gap-lg">
+        <a class="text-on-surface-variant font-body-md text-body-md hover:text-primary underline decoration-2 underline-offset-4 transition-all duration-300" href="#">Safety Guidelines</a>
+        <a class="text-on-surface-variant font-body-md text-body-md hover:text-primary underline decoration-2 underline-offset-4 transition-all duration-300" href="#">Terms of Service</a>
+        <a class="text-on-surface-variant font-body-md text-body-md hover:text-primary underline decoration-2 underline-offset-4 transition-all duration-300" href="#">Support</a>
+        <a class="text-on-surface-variant font-body-md text-body-md hover:text-primary underline decoration-2 underline-offset-4 transition-all duration-300" href="#">Privacy Policy</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- WebRTC, Socket.io, & Application scripts -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
