@@ -45,10 +45,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   await fetchAuthConfig();
   await loadUserSession();
 
-  // Setup UI tabs toggler
-  document.getElementById('login-form').addEventListener('submit', handleLoginSubmit);
-  document.getElementById('signup-form').addEventListener('submit', handleSignupSubmit);
-  
+
   // Listen for device changes in dashboard
   document.getElementById('camera-select').addEventListener('change', handleDeviceChange);
   document.getElementById('mic-select').addEventListener('change', handleDeviceChange);
@@ -80,40 +77,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('add-interest-trigger-btn').addEventListener('click', addNewTagPrompt);
 });
 
-// Toggle Auth Screens Tab (Login vs Signup)
-function toggleAuthTab(tab) {
-  const loginBtn = document.getElementById('tab-login-btn');
-  const signupBtn = document.getElementById('tab-signup-btn');
-  const loginForm = document.getElementById('login-form');
-  const signupForm = document.getElementById('signup-form');
-  const errAlert = document.getElementById('auth-error-alert');
-
-  errAlert.classList.add('hidden');
-
-  // Reset signup verification fields when switching tabs
-  const otpContainer = document.getElementById('signup-otp-container');
-  if (otpContainer) {
-    otpContainer.classList.add('hidden');
-    document.getElementById('signup-otp').value = '';
-    document.getElementById('signup-otp').removeAttribute('required');
-    document.getElementById('signup-name').disabled = false;
-    document.getElementById('signup-email').disabled = false;
-    document.getElementById('signup-password').disabled = false;
-    document.getElementById('signup-submit-btn').textContent = 'Create Account';
-  }
-
-  if (tab === 'login') {
-    loginBtn.className = 'py-md font-label-md text-label-md rounded-lg bg-primary text-on-primary font-semibold transition-all';
-    signupBtn.className = 'py-md font-label-md text-label-md rounded-lg text-on-surface-variant hover:text-on-surface transition-all';
-    loginForm.classList.remove('hidden');
-    signupForm.classList.add('hidden');
-  } else {
-    signupBtn.className = 'py-md font-label-md text-label-md rounded-lg bg-primary text-on-primary font-semibold transition-all';
-    loginBtn.className = 'py-md font-label-md text-label-md rounded-lg text-on-surface-variant hover:text-on-surface transition-all';
-    loginForm.classList.add('hidden');
-    signupForm.classList.remove('hidden');
-  }
-}
 
 // Fetch authentication configuration from the backend
 async function fetchAuthConfig() {

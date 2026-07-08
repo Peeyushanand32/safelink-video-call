@@ -106,102 +106,30 @@
 </head>
 <body class="bg-background text-on-surface flex flex-col min-h-screen relative overflow-x-hidden">
 
-  <!-- ==================== AUTHENTICATION VIEW (LOGIN/SIGNUP) ==================== -->
+  <!-- ==================== AUTHENTICATION VIEW (GOOGLE SSO ONLY) ==================== -->
   <main id="auth-view" class="flex-grow flex items-center justify-center px-margin-mobile py-xl z-30 transition-all duration-500">
-    <div class="glass-card rounded-xl p-lg md:p-xl max-w-md w-full shadow-2xl relative border border-primary/20">
+    <div class="glass-card rounded-xl p-lg md:p-xl max-w-sm w-full shadow-2xl relative border border-primary/20 flex flex-col gap-lg animate-fade-in">
       
       <!-- Brand Logo -->
-      <div class="flex flex-col items-center mb-lg">
+      <div class="flex flex-col items-center">
         <span class="material-symbols-outlined text-primary text-5xl animate-pulse" style="font-variation-settings: 'FILL' 1;">shield_person</span>
         <h2 class="font-headline-lg text-headline-lg font-bold text-primary mt-2">SafeLink</h2>
         <p class="text-label-sm text-on-surface-variant">Secure Peer-to-Peer Video Call</p>
       </div>
 
-      <!-- Tabs -->
-      <div class="grid grid-cols-2 gap-sm p-xs bg-surface-container-lowest rounded-xl mb-lg border border-outline-variant/20">
-        <button id="tab-login-btn" onclick="toggleAuthTab('login')" class="py-md font-label-md text-label-md rounded-lg bg-primary text-on-primary font-semibold transition-all">Sign In</button>
-        <button id="tab-signup-btn" onclick="toggleAuthTab('signup')" class="py-md font-label-md text-label-md rounded-lg text-on-surface-variant hover:text-on-surface transition-all">Sign Up</button>
+      <!-- Welcome Message -->
+      <div class="text-center">
+        <p class="text-body-md text-on-surface-variant">Connect with others securely. Sign in using your Google account to start video calling.</p>
       </div>
 
       <!-- Error Alert -->
-      <div id="auth-error-alert" class="hidden p-md bg-error/10 border border-error/30 text-error rounded-xl font-body-md text-body-md mb-md flex items-center gap-sm">
+      <div id="auth-error-alert" class="hidden p-md bg-error/10 border border-error/30 text-error rounded-xl font-body-md text-body-md flex items-center gap-sm">
         <span class="material-symbols-outlined">error</span>
         <span id="auth-error-text">Authentication Error occurred.</span>
       </div>
 
-      <!-- SIGN IN FORM -->
-      <form id="login-form" class="space-y-md">
-        <div class="space-y-sm">
-          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Email Address</label>
-          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
-            <span class="material-symbols-outlined text-on-surface-variant">mail</span>
-            <input type="email" id="login-email" required placeholder="name@domain.com" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
-          </div>
-        </div>
-
-        <div class="space-y-sm">
-          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Password</label>
-          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
-            <span class="material-symbols-outlined text-on-surface-variant">lock</span>
-            <input type="password" id="login-password" required placeholder="••••••••" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
-          </div>
-        </div>
-
-        <button type="submit" class="w-full py-md px-xl bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(79,219,200,0.3)] transition-all active:scale-95 shadow-md">
-          Sign In
-        </button>
-      </form>
-
-      <!-- SIGN UP FORM -->
-      <form id="signup-form" class="space-y-md hidden">
-        <div class="space-y-sm">
-          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Full Name</label>
-          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
-            <span class="material-symbols-outlined text-on-surface-variant">person</span>
-            <input type="text" id="signup-name" required placeholder="Alex Rivera" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
-          </div>
-        </div>
-
-        <div class="space-y-sm">
-          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Email Address</label>
-          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
-            <span class="material-symbols-outlined text-on-surface-variant">mail</span>
-            <input type="email" id="signup-email" required placeholder="name@domain.com" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
-          </div>
-        </div>
-
-        <div class="space-y-sm">
-          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Password</label>
-          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 focus-within:border-primary transition-colors">
-            <span class="material-symbols-outlined text-on-surface-variant">lock</span>
-            <input type="password" id="signup-password" required placeholder="Choose a secure password" class="bg-transparent border-none text-on-surface font-body-md w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40" />
-          </div>
-        </div>
-
-        <!-- OTP Field (Hidden by default, shown after clicking Send OTP) -->
-        <div id="signup-otp-container" class="space-y-sm hidden">
-          <label class="font-label-sm text-label-sm text-on-surface-variant px-1">Verification OTP</label>
-          <div class="flex items-center gap-md bg-surface-container-lowest p-md rounded-lg border border-primary/50 focus-within:border-primary transition-colors">
-            <span class="material-symbols-outlined text-primary">verified_user</span>
-            <input type="text" id="signup-otp" placeholder="••••••" maxlength="6" class="bg-transparent border-none text-on-surface font-bold text-center w-full focus:ring-0 p-0 placeholder:text-on-surface-variant/40 tracking-widest text-lg" />
-          </div>
-          <p class="text-[11px] text-on-surface-variant/70 text-center">We've sent a 6-digit verification code to your email.</p>
-        </div>
-
-        <button type="submit" id="signup-submit-btn" class="w-full py-md px-xl bg-primary text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(79,219,200,0.3)] transition-all active:scale-95 shadow-md">
-          Create Account
-        </button>
-      </form>
-
-      <!-- Divider line -->
-      <div class="flex items-center gap-md my-lg">
-        <div class="h-[1px] bg-outline-variant/30 flex-grow"></div>
-        <span class="text-label-sm text-on-surface-variant">or</span>
-        <div class="h-[1px] bg-outline-variant/30 flex-grow"></div>
-      </div>
-
       <!-- Google Sign In API Container -->
-      <div id="google-auth-elements-wrapper" class="space-y-md">
+      <div id="google-auth-elements-wrapper" class="w-full">
         <!-- Render real Google button if Client ID exists, otherwise Fallback to custom styled button -->
         <button type="button" id="custom-google-btn" onclick="handleGoogleSignInTrigger()" class="w-full flex items-center justify-center gap-md py-md px-xl bg-surface-container-highest text-on-surface hover:text-primary hover:border-primary border border-outline-variant/30 rounded-xl font-bold transition-all active:scale-95 shadow-md">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
