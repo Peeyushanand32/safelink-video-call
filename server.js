@@ -379,7 +379,7 @@ app.post('/api/auth/interests', authenticateToken, async (req, res) => {
 // 5.5 Razorpay Payments: Create Order
 app.post('/api/payment/create-order', authenticateToken, async (req, res) => {
   try {
-    const amount = 4000; // 40 INR in paise
+    const amount = 100; // 1 INR in paise
     const currency = 'INR';
 
     // Check if we are running in Simulator Mode (placeholder or unconfigured Razorpay client)
@@ -414,7 +414,17 @@ app.post('/api/payment/create-order', authenticateToken, async (req, res) => {
 
   } catch (err) {
     console.error('[Payment Create Order Error]:', err);
-    res.status(500).json({ error: 'Failed to create payment order. Try again.' });
+    // If order creation fails (e.g. invalid keys), fallback to simulation sandbox
+    const mockOrderId = `order_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    console.log(`[Payment] Failed to create live order, falling back to simulated: ${mockOrderId}`);
+    res.json({
+      id: mockOrderId,
+      currency: 'INR',
+      amount: 100,
+      isMock: true,
+      key: RAZORPAY_KEY_ID,
+      warning: 'Fallback to simulator: ' + err.message
+    });
   }
 });
 

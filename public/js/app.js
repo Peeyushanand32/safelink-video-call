@@ -1400,21 +1400,21 @@ function renderSubscriptionDetails() {
     badge.innerText = 'Premium';
     timeLeft.innerText = sub.timeLeftStr;
     desc.innerText = 'Thank you for supporting SafeLink! Your premium subscription is active.';
-    btnText.innerText = 'Extend Premium (₹40)';
+    btnText.innerText = 'Extend Premium (₹1)';
     actionBtn.className = 'w-full flex items-center justify-center gap-sm py-md px-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold rounded-xl hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-300 active:scale-95 shadow-md';
   } else if (sub.status === 'trial') {
     badge.className = 'inline-flex items-center gap-xs px-md py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30';
     badge.innerText = 'Free Trial';
     timeLeft.innerText = sub.timeLeftStr;
     desc.innerText = 'Your 1-day free trial is active. Upgrade to premium for uninterrupted secure matchmaking.';
-    btnText.innerText = 'Upgrade to Premium (₹40)';
+    btnText.innerText = 'Upgrade to Premium (₹1)';
     actionBtn.className = 'w-full flex items-center justify-center gap-sm py-md px-xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(20,184,166,0.4)] transition-all duration-300 active:scale-95 shadow-md';
   } else {
     badge.className = 'inline-flex items-center gap-xs px-md py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-error/20 text-error border border-error/30';
     badge.innerText = 'Expired';
     timeLeft.innerText = 'Access Expired';
-    desc.innerText = 'Your free trial or premium access has expired. Pay ₹40 to reactivate 1 month of premium calling.';
-    btnText.innerText = 'Reactivate Access (₹40)';
+    desc.innerText = 'Your free trial or premium access has expired. Pay ₹1 to reactivate 1 month of premium calling.';
+    btnText.innerText = 'Reactivate Access (₹1)';
     actionBtn.className = 'w-full flex items-center justify-center gap-sm py-md px-xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold rounded-xl hover:shadow-[0_0_15px_rgba(20,184,166,0.4)] transition-all duration-300 active:scale-95 shadow-md animate-pulse';
   }
 }
