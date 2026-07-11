@@ -399,7 +399,10 @@ app.post('/api/payment/create-order', authenticateToken, async (req, res) => {
     const options = {
       amount: amount,
       currency: currency,
-      receipt: `rcpt_${req.user.id.replace('usr_', '')}`
+      receipt: `rcpt_${req.user.id.replace('usr_', '')}`,
+      notes: {
+        website_name: "SafeLink Video Call"
+      }
     };
 
     const order = await razorpay.orders.create(options);
